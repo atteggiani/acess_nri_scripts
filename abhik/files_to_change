@@ -1,0 +1,20 @@
+SMCSNOWD
+DSOILTMP
+SOILTYPE
+SSTIN
+SICEIN
+MASK
+OROG
+SULPEMIS (Not necessary for testing)
+USRANCIL (Not necessary for testing)
+CHEMOXID (Not necessary for testing)
+FRACINIT
+VEGINIT (Issue with nt because of different functional types)
+SOOTEMIS (Not necessary for testing)
+LANDFRAC
+DUSTSOIL
+BIOMASS (Not necessary for testing)
+DMSCONC (Not necessary for testing)
+RIVSTOR (Issue with map orientation)
+RIVCHAN (Issue with map orientation)
+ARCLBIOG (Not necessary for testing)
