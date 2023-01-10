@@ -11,7 +11,7 @@ def plot(x,**kwargs):
     plt.colorbar()
 
 file="veg_modified.nc"
-ancil_file = "/g/data/tm70/dm5220/scripts/abhik/veg_original"
+ancil_file = "/g/data/tm70/dm5220/scripts/abhik/ancil/VEGINIT"
 
 ancil=mule.AncilFile.from_file(ancil_file)
 ancil_modif=ancil.copy(include_fields=True)
@@ -22,7 +22,7 @@ d=xr.open_dataset(file).squeeze()
 k=0
 for v in d.data_vars:
     # cond=d[v]
-    cond=d[v].where(~d[v].isnull(),nanval)
+    cond=d[v].where(d[v].notnull(),nanval)
     data=cond.values
     
     for i in range(data.shape[0]):
@@ -33,5 +33,5 @@ newfile=os.path.splitext(file)[0]
 ancil_modif.to_file(newfile)
 
 # test
-newancil=mule.AncilFile.from_file(newfile)
+#newancil=mule.AncilFile.from_file(newfile)
 
