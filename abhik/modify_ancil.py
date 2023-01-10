@@ -1,23 +1,40 @@
 #!/usr/bin/env python
-import mule
-import xarray as xr
-import numpy as np
-import itertools
+
+import argparse
 # import matplotlib.pyplot as plt
 # import myfuncs as my
 # import pandas as pd
 
+# Parse arguments
+description = '''Modify UM ancillary file.'''
+parser = argparse.ArgumentParser(description="Modify UM ancillary file on different grid")
+parser.add_argument('--input','-i','-bubbi', dest='um_input_file', required=True, type=str,
+                    help='UM ancillary input file')
+parser.add_argument('--output','-o', dest='um_output_file', required=True, type=str,
+                    help='UM ancillary output file')
+parser.add_argument('--ncfile','--nc', dest='ncfile', required=True, type=str,
+                    help='NetCDF file to turn into UM ancillary file')
+args = parser.parse_args()
+ancilFilename=args.um_input_file
+# ancilFilename = "/g/data/tm70/dm5220/scripts/abhik/ancil/LANDFRAC"
+fileout=args.um_output_file
+# fileout = "/g/data/tm70/dm5220/scripts/abhik/ancil_shift/LANDFRAC_shift"
+ncFilename=args.ncfile
+# ncFilename = "/g/data/tm70/dm5220/scripts/abhik/ancil_shift/nc/MASK_shift.nc"
+
+import mule
+import xarray as xr
+import numpy as np
+import itertools
+
 print("====== Reading files... ======", end="\r")
 # Read files
-ncFilename = "/g/data/tm70/dm5220/scripts/abhik/ancil_shift/nc/MASK_shift.nc"
 ncFile = xr.load_dataset(ncFilename)
-ancilFilename = "/g/data/tm70/dm5220/scripts/abhik/ancil/LANDFRAC"
 ancilFile = mule.AncilFile.from_file(ancilFilename)
-fileout = "/g/data/tm70/dm5220/scripts/abhik/ancil_shift/LANDFRAC_shift"
 print("====== Reading files OK! ======")
 
 nanval=-1073741824.0
-
+quit()
 print("====== Consistency check... ======", end="\r")
 # CONSISTENCY CHECK
 # Check that both longitude and latitude coords are present in the .nc file and they have consistent lenghts with the ancil file
