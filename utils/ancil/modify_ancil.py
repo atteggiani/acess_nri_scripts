@@ -2,6 +2,8 @@
 
 # Script created by Davide Marchegiani (davide.marchegiani@anu.edu.au) at ACCESS-NRI.
 
+# Modify a UM ancillary file using data from a netCDF file
+
 import argparse
 
 # Parse arguments
@@ -9,10 +11,10 @@ description = '''Script to modify a UM ancillary file using data from a netCDF f
 parser = argparse.ArgumentParser(description=description)
 parser.add_argument('-i', '--input', dest='um_input_file', required=True, type=str,
                     help='UM ancillary input file. (Required)')
-parser.add_argument('-o', '--output', dest='um_output_file', required=True, type=str,
-                    help='UM ancillary output file. (Required)')
 parser.add_argument('--nc', '--ncfile', dest='ncfile', required=True, type=str,
                     help='NetCDF file to turn into UM ancillary file. (Required)')
+parser.add_argument('-o', '--output', dest='um_output_file', required=False, type=str,
+                    help='UM ancillary output file.')                    
 parser.add_argument('--lat', '--latitude', dest='latitude_name', required=False, type=str,
                     help='Name of the latitude dimension in the netCDF file.')
 parser.add_argument('--lon', '--longitude', dest='longitude_name', required=False, type=str,
@@ -27,9 +29,9 @@ parser.add_argument('--nan', dest='nanval', required=False, type=float,
                     help='Value for NaNs in the netCDF file.')
 
 args = parser.parse_args()
-ancilFilename=args.um_input_file
-fileout=args.um_output_file
+inputFilename=args.um_input_file
 ncFilename=args.ncfile
+outputFilename=args.um_output_file
 latcoord=args.latitude_name
 loncoord=args.longitude_name
 tcoord=args.time_name
@@ -37,23 +39,12 @@ levcoord=args.level_name
 pseudocoord=args.pseudo_level_name
 nanval=args.nanval
 
-# print(f"{ancilFilename}\n{fileout}\n{ncFilename}\n{latcoord}\n{loncoord}\n{tcoord}\n{pseudocoord}")
-
-# ancilFilename = "/g/data/tm70/dm5220/scripts/abhik/testdir/testancil"
-# ncFilename = "/g/data/tm70/dm5220/scripts/abhik/testdir/testncfile.nc"
-# fileout = "/g/data/tm70/dm5220/scripts/abhik/testdir/CHEMOXID_test"
-
 import mule
 from mule.validators import ValidateError
 import xarray as xr
 import warnings
 import sys
 warnings.filterwarnings("ignore")
-# import numpy as np
-# import itertools
-# # import matplotlib.pyplot as plt
-# # import myfuncs as my
-# # import pandas as pd
 
 # Set UM nanval
 UM_NANVAL=-1073741824.0 #(-2.0**30)
@@ -61,7 +52,7 @@ UM_NANVAL=-1073741824.0 #(-2.0**30)
 # READ FILES
 print("====== Reading files... ======", end="\r")
 ncFile = xr.load_dataset(ncFilename).squeeze()
-ancilFile = mule.AncilFile.from_file(ancilFilename)
+inputFile = mule.AncilFile.from_file(inputFilename)
 print("====== Reading files OK! ======")
 
 
@@ -69,9 +60,9 @@ print("====== Reading files OK! ======")
 print("====== Consistency check... ======", end="\r")
 # Check that ancillary file is valid.
 try:
-    ancilFile.validate()
+    inputFile.validate()
 except ValidateError as e:
-    sys.exit("Ancillary file validation failed. Validator spawned the following error message:\n"
+    sys.exit(f"Validation failed for the input ancillary file '{inputFilename}'.\nValidator spawned the following error message:\n\n"
             "{}".format('\n'.join(str(e).split('\n')[1:])))
 
 # Check that longitude, latitude and time coords are present in the .nc file and they have consistent lenghts with the ancillary file
@@ -79,9 +70,9 @@ dims=list(ncFile.dims)
 
 # Latitude
 if latcoord is None: #If user has not defined any latitude name
-    if "latitude" in ncFile.dims:
+    if "latitude" in dims:
         latcoord="latitude"
-    elif "lat" in ncFile.dims:
+    elif "lat" in dims:
         latcoord="lat"
     else:
         sys.exit("No latitude dimension found in the netCDF file."
@@ -90,16 +81,16 @@ elif latcoord not in dims:
     sys.exit(f"Specified latitude dimension '{latcoord}' not found in netCDF file.")
 lat=len(ncFile[latcoord])
 # Check that latitude dimension is consistent
-if lat != ancilFile.integer_constants.num_rows:
+if lat != inputFile.integer_constants.num_rows:
     sys.exit(f"Latitude dimension not consistent!\nLength of netCDF file's latitude: {lat}."
-        f" Length of ancillary file's latitude: {ancilFile.integer_constants.num_rows}.")
+        f" Length of ancillary file's latitude: {inputFile.integer_constants.num_rows}.")
 dims.remove(latcoord)
 
 # Longitude
 if loncoord is None: #If user has not defined any longitude name
-    if "longitude" in ncFile.dims:
+    if "longitude" in dims:
         loncoord="longitude"
-    elif "lon" in ncFile.dims:
+    elif "lon" in dims:
         loncoord="lon"
     else:
         sys.exit("No longitude dimension found in the netCDF file."
@@ -108,16 +99,16 @@ elif loncoord not in dims:
     sys.exit(f"Specified longitude dimension '{loncoord}' not found in netCDF file.")
 lon=len(ncFile[loncoord])
 # Check that longitude dimension is consistent
-if lon != ancilFile.integer_constants.num_cols:
+if lon != inputFile.integer_constants.num_cols:
     sys.exit(f"Longitude dimension not consistent!\nLength of netCDF file's longitude: {lon}."
-        f" Length of ancillary file's longitude: {ancilFile.integer_constants.num_cols}.")
+        f" Length of ancillary file's longitude: {inputFile.integer_constants.num_cols}.")
 dims.remove(loncoord)
 
 # Time
 if tcoord is None: #If user has not defined any time name
-    if "time" in ncFile.dims:
+    if "time" in dims:
         tcoord="time"
-    elif "t" in ncFile.dims:
+    elif "t" in dims:
         tcoord="t"
     else:
         sys.exit("No time dimension found in the netCDF file."
@@ -126,13 +117,13 @@ elif tcoord not in dims:
     sys.exit(f"Specified time dimension '{tcoord}' not found in netCDF file.")
 time=len(ncFile[tcoord])
 # Check that level time is consistent
-if time != ancilFile.integer_constants.num_times:
+if time != inputFile.integer_constants.num_times:
     sys.exit(f"Time dimension not consistent!\nLength of netCDF file's time: {time}."
-        f" Length of ancillary file's time: {ancilFile.integer_constants.num_times}.")
+        f" Length of ancillary file's time: {inputFile.integer_constants.num_times}.")
 dims.remove(tcoord)
 
 # Level
-if ancilFile.integer_constants.num_levels > 1:
+if inputFile.integer_constants.num_levels > 1:
     if levcoord is None: #If user has not defined any level name
         if len(dims) >= 1:
             vert_levs=["hybrid","sigma","pressure","depth"]
@@ -149,16 +140,16 @@ if ancilFile.integer_constants.num_levels > 1:
         sys.exit(f"Specified vertical level dimension '{levcoord}' not found in netCDF file.")
     lev = len(ncFile[levcoord])
     # Check that level dimension is consistent
-    if lev != ancilFile.integer_constants.num_levels:
+    if lev != inputFile.integer_constants.num_levels:
         sys.exit(f"Vertical level dimension not consistent!\nLength of netCDF file's vertical level: {lev}."
-            f" Length of ancillary file's vertical level: {ancilFile.integer_constants.num_levels}.")
+            f" Length of ancillary file's vertical level: {inputFile.integer_constants.num_levels}.")
     dims.remove(levcoord)
 else:
     if levcoord is not None:
         sys.exit(f"Vertical level dimension '{levcoord}' specified, but no vertical level dimension found in the ancillary file.")
 
 # Pseudo-levels
-if sum([f.lbuser5 for f in ancilFile.fields]) != 0:
+if sum([f.lbuser5 for f in inputFile.fields]) != 0:
     if pseudocoord is None: #If user has not defined any pseudo-level name
         # Check if ancillary file has pseudo-levels
             if len(dims) == 0:
@@ -172,7 +163,7 @@ if sum([f.lbuser5 for f in ancilFile.fields]) != 0:
         sys.exit(f"Specified pseudo-level dimension '{levcoord}' not found in netCDF file.")
     pseudo = len(ncFile[pseudocoord])
     # Check that pseudo-levels are consistent
-    pseudoLevs=[f.lbuser5 for f in ancilFile.fields[:(len(ancilFile.fields)//time)]]
+    pseudoLevs=[f.lbuser5 for f in inputFile.fields[:(len(inputFile.fields)//time)]]
     k=0
     for i,var in enumerate(ncFile.data_vars):
         if pseudo in ncFile[var].dims:
@@ -200,9 +191,9 @@ def get_2D_data(data):
 
 # Create a copy of the ancillary file to modify
 if len(dims) > 0:
-    newAncilFile = ancilFile.copy(include_fields=True).drop(*dims)
+    newAncilFile = inputFile.copy(include_fields=True).drop(*dims)
 else:
-    newAncilFile = ancilFile.copy(include_fields=True)
+    newAncilFile = inputFile.copy(include_fields=True)
 
 fldind = iter(newAncilFile.fields)
 for time in range(time):
@@ -229,5 +220,12 @@ for time in range(time):
                         data_2d = get_2D_data(ncFile[var].isel({levcoord:lv,pseudocoord:ps,tcoord:time},drop=True))
                         next(fldind).set_data_provider(mule.ArrayDataProvider(data_2d))
 
-newAncilFile.to_file(fileout)
+if outputFilename is None:
+    import os
+    outputFilename=inputFilename+"_modified"
+    k=0
+    while os.path.isfile(outputFilename):
+        k+=1
+        outputFilename = outputFilename+str(k)
+newAncilFile.to_file(outputFilename)
 print("====== Writing new ancillary file OK! ======")
