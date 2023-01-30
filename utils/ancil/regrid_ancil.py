@@ -8,7 +8,7 @@ import argparse
 
 # Parse arguments
 description='''Regrid UM ancillary file onto another ancillary file or netCDF file grid.'''
-parser = argparse.ArgumentParser(description=description)
+parser = argparse.ArgumentParser(description=description, allow_abbrev=False)
 parser.add_argument('-i', '--input', dest='um_input_file', required=True, type=str,
                     help='UM ancillary input file. (Required)')
 parser.add_argument('-g', "--grid", dest='gridfile', required=True, type=str,
