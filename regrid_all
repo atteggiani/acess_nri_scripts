@@ -1,0 +1,12 @@
+#!/bin/bash
+
+inputFolder=/g/data3/tm70/dm5220/ancil/abhik/ancil-from-uk
+output=/g/data3/tm70/dm5220/ancil/abhik/newancil
+template=/g/data/tm70/dm5220/ancil/abhik/shifted/MASK_shift
+
+for f in $(find $inputFolder -type f | grep -P '.*\.(?!.*(nc|txt|gz|namelist|py))'); do
+    out=${output}${f#/g/data3/tm70/dm5220/ancil/abhik/ancil-from-uk}
+    if ! [[ -f $out ]]; then
+        echo $f
+    fi
+done

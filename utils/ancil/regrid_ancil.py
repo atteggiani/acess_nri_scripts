@@ -5,7 +5,7 @@
 # # Interpolate an ancillary file onto another grid
 
 import argparse
-
+import os
 # Parse arguments
 description='''Regrid UM ancillary file onto another ancillary file or netCDF file grid.'''
 parser = argparse.ArgumentParser(description=description, allow_abbrev=False)
@@ -19,14 +19,18 @@ parser.add_argument('--lat', '--latitude', dest='ncfile_latitude_name', required
                     help='Name of the latitude dimension in the netCDF file.')
 parser.add_argument('--lon', '--longitude', dest='ncfile_longitude_name', required=False, type=str,
                     help='Name of the longitude dimension in the netCDF file.')
+parser.add_argument('--fix', dest='fix_validation', required=False, action='store_true',
+                    help='Try to fix any ancillary validation error.')
+
 args = parser.parse_args()
-inputFilename=args.um_input_file
-gridFilename=args.gridfile
+inputFilename=os.path.abspath(args.um_input_file)
+gridFilename=os.path.abspath(args.gridfile)
 outputFilename=args.um_output_file
 latcoord=args.ncfile_latitude_name
 loncoord=args.ncfile_longitude_name
+fix=args.fix_validation
 
-print("====== Reading files... ======", end="\r")
+print(f"====== Reading '{inputFilename}' ancillary file... ======", end="\r")
 
 import sys
 import numpy as np
@@ -34,8 +38,9 @@ import cdms2
 import regrid2
 import mule
 from mule.validators import ValidateError
-import warnings
 import xarray as xr
+from fix_validation_error import validate_and_fix, FixValidateError
+import warnings
 warnings.filterwarnings("ignore")
 
 
@@ -50,15 +55,21 @@ except ValueError:
         umgrid=False
     except ValueError:
         sys.exit(f"GRIDFILE must be either a UM ancillary file or a netCDF file.")
-print("====== Reading files OK! ======")
+print(f"====== Reading '{inputFilename}' ancillary file OK! ======")
 
 print("====== Consistency check... ======", end="\r")
 # Check that both ancillary file and grid file are valid.
 try:
-    inputFile.validate()
+    if fix:
+        inputFile=validate_and_fix(inputFile)
+    else:
+        inputFile.validate()
 except ValidateError as e:
-    sys.exit(f"Validation failed for the input ancillary file '{inputFilename}'.\nValidator spawned the following error message:\n\n"
-            "{}".format('\n'.join(str(e).split('\n')[1:])))
+    sys.exit(f"Validation failed for the input ancillary file '{inputFilename}'.\nValidator spawned the following error message:\n"+\
+            "'{}'\n".format('\n'.join(str(e).split('\n')[1:]))+\
+            "If you want to try and fix the error, use the '--fix' option.")
+except FixValidateError as e:
+    sys.exit(f"Validation and fix failed for the input ancillary file '{inputFilename}'.\n\n{str(e)}")
 
 if umgrid:
     try:
@@ -75,7 +86,7 @@ else:
             latcoord="lat"
         else:
             sys.exit("No latitude dimension found in the netCDF file."
-                "\nTo specify the name of the latitude dimension in the netCDF file use the option --latitude <name>.")
+                "\nTo specify the name of the latitude dimension in the netCDF file use the '--latitude <name>' option.")
     elif latcoord not in gridFile.dims:
         sys.exit(f"Specified latitude dimension '{latcoord}' not found in netCDF file.")
     # Check longitude
@@ -86,12 +97,22 @@ else:
             loncoord="lon"
         else:
             sys.exit("No longitude dimension found in the netCDF file."
-                "\nTo specify the name of the longitude dimension in the netCDF file use the option --longitude <name>.")
+                "\nTo specify the name of the longitude dimension in the netCDF file use the '--longitude <name>' option.")
     elif loncoord not in gridFile.dims:
         sys.exit(f"Specified latitude dimension '{loncoord}' not found in netCDF file.")
 print("====== Consistency check OK! ======")
 
-print("====== Regridding and writing new UM ancil file... ======", end="\r")
+
+if outputFilename is None:
+    outputFilename=inputFilename+"_regridded"
+    k=0
+    while os.path.isfile(outputFilename):
+        k+=1
+        outputFilename = outputFilename+str(k)
+else:
+    outputFilename = os.path.abspath(outputFilename)
+
+print(f"====== Regridding and writing '{outputFilename}' ancillary file... ======", end="\r")
 # Get output grid properties
 if umgrid:
     nlat_target = gridFile.integer_constants.num_rows
@@ -182,14 +203,5 @@ for f in outputFile.fields:
     
     f.set_data_provider(mule.ArrayDataProvider(newdata))
 
-# Write output file
-if outputFilename is None:
-    import os
-    outputFilename=inputFilename+"_regridded"
-    k=0
-    while os.path.isfile(outputFilename):
-        k+=1
-        outputFilename = outputFilename+str(k)
-
 outputFile.to_file(outputFilename)
-print("====== Regridding and writing new UM ancil file OK! ======")
+print(f"====== Regridding and writing '{outputFilename}' ancillary file OK! ======")

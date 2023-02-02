@@ -35,6 +35,8 @@ parser.add_argument('--ignore-levels', dest='ignore_levels', action="store_true"
                           consider it as having only one level.\
                           (Necessary for a mismatch between the actual level dimension \
                           and the 'integer_constans.num_levels' header in some ancillary files.)")
+parser.add_argument('--fix', dest='fix_validation', required=False, action='store_true',
+                    help='Try to fix any ancillary validation error.')
 
 args = parser.parse_args()
 inputFilename=os.path.abspath(args.um_input_file)
@@ -48,25 +50,27 @@ pseudocoord=args.pseudo_level_name
 nanval=args.nanval
 regrid=args.regrid
 ignore_levels=args.ignore_levels
+fix=args.fix_validation
+
+print(f"====== Reading '{inputFilename}' ancillary file... ======", end="\r")
 
 import mule
 from mule.validators import ValidateError
 import xarray as xr
-import warnings
 import sys
-import cdms2
-import regrid2
 import numpy as np
+from fix_validation_error import validate_and_fix, FixValidateError
+import warnings
 warnings.filterwarnings("ignore")
 
 # Set UM nanval
 UM_NANVAL=-1073741824.0 #(-2.0**30)
 
 # READ FILES
-print("====== Reading files... ======", end="\r")
 inputFile = mule.AncilFile.from_file(inputFilename)
 ncFile = xr.load_dataset(ncFilename, decode_times=False).squeeze()
-print("====== Reading files OK! ======")
+print(f"====== Reading '{inputFilename}' ancillary file OK! ======")
+
 
 del inputFile.fields[-1]
 for f in inputFile.fields:
@@ -77,10 +81,16 @@ for f in inputFile.fields:
 print("====== Consistency check... ======", end="\r")
 # Check that ancillary file is valid.
 try:
-    inputFile.validate()
+    if fix:
+        inputFile=validate_and_fix(inputFile)
+    else:
+        inputFile.validate()
 except ValidateError as e:
-    sys.exit(f"Validation failed for the input ancillary file '{inputFilename}'.\nValidator spawned the following error message:\n\n"
-            "{}".format('\n'.join(str(e).split('\n')[1:])))
+    sys.exit(f"Validation failed for the input ancillary file '{inputFilename}'.\nValidator spawned the following error message:\n"+\
+            "{}".format('\n'.join(str(e).split('\n')[1:]))+\
+            "If you want to try and fix the error, use the '--fix' option.")
+except FixValidateError as e:
+    sys.exit(f"Validation and fix failed for the input ancillary file '{inputFilename}'.\n\n{str(e)}")
 
 # Check that longitude, latitude and time coords are present in the .nc file and they have consistent lenghts with the ancillary file
 dims=list(ncFile.dims)
@@ -214,7 +224,6 @@ print("====== Consistency check OK! ======")
 
 # WRITE FILE
 if outputFilename is None:
-    import os
     outputFilename=inputFilename+"_modified"
     k=0
     while os.path.isfile(outputFilename):

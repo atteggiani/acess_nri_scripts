@@ -4,6 +4,9 @@
 # Created by Davide Marchegiani - davide.marchegiani@anu.edu.au
 def process(maskfile):
     import mule
+    import warnings
+    warnings.filterwarnings("ignore")
+
     mask=mule.AncilFile.from_file(maskfile)
     print(mask.fields[0].get_data().sum())
 
