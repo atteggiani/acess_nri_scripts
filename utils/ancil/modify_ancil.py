@@ -158,7 +158,7 @@ if ntime != inputFile.integer_constants.num_times:
 if inputFile.integer_constants.num_levels > 1 and not ignore_levels:
     if levcoord is None: #If user has not defined any level name
         if len(dims) >= 1:
-            vert_levs=["hybrid","sigma","pressure","depth"]
+            vert_levs=["hybrid","sigma","pressure","depth","surface"]
             # Check if ancillary file has level variable
             for vlev in vert_levs:
                 if sum([vlev in s for s in dims]) == 1:

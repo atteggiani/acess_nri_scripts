@@ -6,24 +6,21 @@
 
 import mule
 from mule.validators import ValidateError
-
+# /g/data3/hh5/public/apps/miniconda3/envs/analysis3-22.07/lib/python3.9/site-packages/mule/validators.py
 class FixValidateError(Exception):
     pass
 
 def fix_error(error,ancilFile):
     errorString = '\n'.join(str(error).split('\n')[1:])
     newAncilFile = ancilFile.copy(include_fields=True)
-    if errorString == \
-            "Ancillary file contains header components other than the "\
-            "row/column dependent constants - these should be set to "\
-            "\"None\" for Ancillary files":
+    if errorString.startswith("Ancillary file contains header components other than the"):
         newAncilFile.level_dependent_constants = None
-        return newAncilFile
+    elif errorString.startswith("Unsupported grid_staggering"):
+        newAncilFile.fixed_length_header.grid_staggering = 3
     else:
-        # sys.exit("The following validation error could not be fixed or is currently not supported:\n\n"
-        # f"{errorString}")
         raise FixValidateError("The following validation error could not be fixed or is currently not supported:\n"
-        f"{errorString}")
+        f"'{errorString}'")
+    return newAncilFile
 
 def validate_and_fix(ancilFile):
     if not isinstance(ancilFile,mule.AncilFile):
