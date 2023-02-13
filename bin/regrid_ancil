@@ -1,2 +1,2 @@
 #!/bin/bash
-/g/data/tm70/dm5220/scripts/utils/ancil/regrid_ancil.py "$@"
+/g/data/tm70/dm5220/scripts/umami/umami/regrid_ancil.py "$@"
