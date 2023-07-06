@@ -1,0 +1,2 @@
+#!/bin/bash
+/scratch/tm70/dm5220/conda/envs/umami/bin/python /g/data/tm70/dm5220/scripts/umami/umami/validate.py "$@"
