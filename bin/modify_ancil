@@ -1,3 +1,0 @@
-#!/bin/bash
-# /scratch/tm70/dm5220/conda/envs/umami/bin/python /g/data/tm70/dm5220/scripts/amami/amami/modify_ancil.py "$@"
-/g/data/hh5/public/apps/miniconda3/envs/analysis3-23.04/bin/python3 /g/data/tm70/dm5220/scripts/amami/amami/modify_ancil.py "$@"
